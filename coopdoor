@@ -1,0 +1,82 @@
+
+
+#!/usr/bin/env python
+import sys
+import RPi.GPIO as GPIO
+import schedule
+import time
+from datetime import datetime
+from astral import Astral
+
+dawn = 0
+dusk = 0
+
+city_name = "San Francisco"
+a = Astral()
+city = a[city_name]
+
+a1=21
+a2=20
+b1=16
+b2=26
+sleeptime=1
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(a1, GPIO.OUT)
+GPIO.setup(a2, GPIO.OUT)
+GPIO.setup(b1, GPIO.OUT)
+GPIO.setup(b2, GPIO.OUT)
+
+def forward(x,pin1,pin2):
+    GPIO.output(pin1, GPIO.LOW)
+    GPIO.output(pin2, GPIO.HIGH)
+    time.sleep(x)
+    GPIO.output(pin2, GPIO.LOW)
+
+
+def reverse(x,pin1,pin2):
+    GPIO.output(pin2, GPIO.LOW)
+    GPIO.output(pin1, GPIO.HIGH)
+    time.sleep(x)
+    GPIO.output(pin1, GPIO.LOW)
+
+def openlock(x):
+    reverse(x,a1,a2)
+
+def opening_door():
+    GPIO.output(a2, GPIO.LOW)
+    GPIO.output(a1, GPIO.HIGH) #opens lock
+    time.sleep(2)
+    GPIO.output(b1, GPIO.LOW)
+    GPIO.output(b2, GPIO.HIGH) #door starts opening
+    time.sleep(2)
+    GPIO.output(a1, GPIO.LOW) #lock closes
+    time.sleep(10)
+    GPIO.output(b2, GPIO.LOW)
+    return schedule.CancelJob
+
+def daily_update():
+    global dawn
+    global dusk
+    dawn_a = city.dawn().time()
+    dawn = "{:d}:{:02d}".format(dawn_a.hour, dawn_a.minute)
+    dusk_a = city.dusk().time()
+    dusk = "{:d}:{:02d}".format(dusk_a.hour, dusk_a.minute)
+    schedule.every().day.at(dawn).do(opening_door)
+    schedule.every().day.at(dusk).do(closing_door)
+
+
+daily_update()
+schedule.every().day.at('01:00').do(daily_update)
+
+
+print('test %s' %str(dawn))
+print('test %s' %str(dusk))
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+
+
+
+
